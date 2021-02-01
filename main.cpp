@@ -68,12 +68,61 @@ DynamicWindow calc_dynamic_window(State *st)
     return dw;
 }
 
+State motion(State *st, Input *u)
+{
+    State st_ret;
+
+    st_ret.yaw_rad = st->yaw_rad + u->omega_rads * DT_S;
+    st_ret.x_m = st->x_m + u->v_ms * cos(st->yaw_rad) * DT_S;
+    st_ret.y_m = st->y_m + u->v_ms * sin(st->yaw_rad) * DT_S;
+    st_ret.v_ms = u->v_ms;
+    st_ret.omega_rads = u->omega_rads;
+
+    return st_ret;
+}
+
+vector<State> calc_trajectory(State *st_init, float v, float y)
+{
+    State st = {st_init->x_m, st_init->y_m, st_init->yaw_rad,
+                st_init->v_ms, st_init->omega_rads};
+
+    vector<State> traj;
+    traj.push_back(st);
+
+    Input u = {v, y};
+
+    float time = 0.0;
+    while (time <= PREDICT_TIME_S)
+    {
+        st = motion(&st, &u);
+        traj.push_back(st);
+        time += DT_S;
+    }
+
+    return traj;
+}
+
 InTraj calc_final_input(State *st, Input *u, DynamicWindow *dw,
                         Position *goal, float obst[][2])
 {
-    InTraj best_u_traj;
+    State st_init = {st->x_m, st->y_m, st->yaw_rad, st->v_ms, st->omega_rads};
 
-    return best_u_traj;
+    float min_cost = 10000.0;
+
+    Input min_u = {u->v_ms, u->omega_rads};
+    min_u.v_ms = 0.0;
+
+    // evaluate all trajectory with sampled input in dynamic window
+    vector<State> traj;
+    for (float v = dw->min_v; v < dw->max_v; v+=V_RESO) {
+        for (float y = dw->min_yr; y < dw->max_yr; y+=YAWRATE_RESO) {
+            traj = calc_trajectory(&st_init, v, y);
+
+            // calculate cost
+
+            // search minimum trajectory
+        }
+    }
 }
 
 InTraj dwa_control(State *st, Input *u, Position *goal, float obst[][2])
