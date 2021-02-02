@@ -102,6 +102,16 @@ vector<State> calc_trajectory(State *st_init, float v, float y)
     return traj;
 }
 
+float calc_to_goal_cost(vector<State> *traj, Position *goal)
+{
+    float goal_magnitude = sqrt(goal->x_m * goal->x_m + goal->y_m * goal->y_m);
+    float traj_magnitude = sqrt(traj->back().x_m * traj->back().x_m
+                                + traj->back().y_m * traj->back().y_m);
+    float dot_product = (goal->x_m * traj->back().x_m) + (goal->y_m * traj->back().y_m);
+
+    return cost;
+}
+
 InTraj calc_final_input(State *st, Input *u, DynamicWindow *dw,
                         Position *goal, float obst[][2])
 {
