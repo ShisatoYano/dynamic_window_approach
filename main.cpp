@@ -108,8 +108,27 @@ float calc_to_goal_cost(vector<State> *traj, Position *goal)
     float traj_magnitude = sqrt(traj->back().x_m * traj->back().x_m
                                 + traj->back().y_m * traj->back().y_m);
     float dot_product = (goal->x_m * traj->back().x_m) + (goal->y_m * traj->back().y_m);
+    float error = dot_product / (goal_magnitude * traj_magnitude);
+    float error_angle = acos(error);
+    float cost = GOAL_COST_GAIN * error_angle;
 
     return cost;
+}
+
+float calc_obstacle_cost(vector<State> *traj, float obst[][2])
+{
+    int skip_n = 2;
+    float min_r = INFINITY;
+
+    int obst_num = sizeof(obst) / sizeof(*obst);
+
+    float ox, oy, dx, dy, r;
+
+    for (int i = 0; i < traj->size(); i+=skip_n) {
+        for (int j = 0; j < obst_num; ++j) {
+
+        }
+    }
 }
 
 InTraj calc_final_input(State *st, Input *u, DynamicWindow *dw,
