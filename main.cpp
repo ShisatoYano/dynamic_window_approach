@@ -126,9 +126,25 @@ float calc_obstacle_cost(vector<State> *traj, float obst[][2])
 
     for (int i = 0; i < traj->size(); i+=skip_n) {
         for (int j = 0; j < obst_num; ++j) {
+            ox = obst[j][0];
+            oy = obst[j][1];
+            dx = traj->at(i).x_m - ox;
+            dy = traj->at(i).y_m - oy;
 
+            r = sqrt(dx * dx + dy * dy);
+            if (r <= ROBOT_RADIUS_M)
+            {
+                return INFINITY;
+            }
+
+            if (min_r >= r)
+            {
+                min_r = r;
+            }
         }
     }
+
+    return 1.0 / min_r;
 }
 
 InTraj calc_final_input(State *st, Input *u, DynamicWindow *dw,
@@ -141,17 +157,38 @@ InTraj calc_final_input(State *st, Input *u, DynamicWindow *dw,
     Input min_u = {u->v_ms, u->omega_rads};
     min_u.v_ms = 0.0;
 
+    vector<State> best_traj;
+    best_traj.push_back(st_init);
+
     // evaluate all trajectory with sampled input in dynamic window
     vector<State> traj;
+    float to_goal_cost, speed_cost, obst_cost, final_cost;
     for (float v = dw->min_v; v < dw->max_v; v+=V_RESO) {
         for (float y = dw->min_yr; y < dw->max_yr; y+=YAWRATE_RESO) {
             traj = calc_trajectory(&st_init, v, y);
 
             // calculate cost
+            to_goal_cost = calc_to_goal_cost(&traj, goal);
+            speed_cost = SPD_COST_GAIN * (MAX_SPD_MS - traj.back().v_ms);
+            obst_cost = calc_obstacle_cost(&traj, obst);
+            final_cost = to_goal_cost + speed_cost + obst_cost;
 
             // search minimum trajectory
+            if (min_cost >= final_cost)
+            {
+                min_cost = final_cost;
+                min_u.v_ms = v;
+                min_u.omega_rads = y;
+                best_traj = traj;
+            }
         }
     }
+
+    InTraj u_traj;
+    u_traj.u = min_u;
+    u_traj.traj = best_traj;
+
+    return u_traj;
 }
 
 InTraj dwa_control(State *st, Input *u, Position *goal, float obst[][2])
