@@ -115,12 +115,10 @@ float calc_to_goal_cost(vector<State> *traj, Position *goal)
     return cost;
 }
 
-float calc_obstacle_cost(vector<State> *traj, float obst[][2])
+float calc_obstacle_cost(vector<State> *traj, float obst[][2], int obst_num)
 {
     int skip_n = 2;
     float min_r = INFINITY;
-
-    int obst_num = sizeof(obst) / sizeof(*obst);
 
     float ox, oy, dx, dy, r;
 
@@ -148,7 +146,7 @@ float calc_obstacle_cost(vector<State> *traj, float obst[][2])
 }
 
 InTraj calc_final_input(State *st, Input *u, DynamicWindow *dw,
-                        Position *goal, float obst[][2])
+                        Position *goal, float obst[][2], int obst_num)
 {
     State st_init = {st->x_m, st->y_m, st->yaw_rad, st->v_ms, st->omega_rads};
 
@@ -170,7 +168,7 @@ InTraj calc_final_input(State *st, Input *u, DynamicWindow *dw,
             // calculate cost
             to_goal_cost = calc_to_goal_cost(&traj, goal);
             speed_cost = SPD_COST_GAIN * (MAX_SPD_MS - traj.back().v_ms);
-            obst_cost = calc_obstacle_cost(&traj, obst);
+            obst_cost = calc_obstacle_cost(&traj, obst, obst_num);
             final_cost = to_goal_cost + speed_cost + obst_cost;
 
             // search minimum trajectory
@@ -191,11 +189,11 @@ InTraj calc_final_input(State *st, Input *u, DynamicWindow *dw,
     return u_traj;
 }
 
-InTraj dwa_control(State *st, Input *u, Position *goal, float obst[][2])
+InTraj dwa_control(State *st, Input *u, Position *goal, float obst[][2], int obst_num)
 {
     DynamicWindow dw = calc_dynamic_window(st);
 
-    InTraj u_traj = calc_final_input(st, u, &dw, goal, obst);
+    InTraj u_traj = calc_final_input(st, u, &dw, goal, obst, obst_num);
 
     return u_traj;
 }
@@ -220,6 +218,7 @@ int main() {
             {7.0, 9.0},
             {12.0, 12.0}
     };
+    int obst_num = sizeof(obst) / sizeof(*obst);
 
     // initial control input
     Input u = {0.0, 0.0};
@@ -232,7 +231,22 @@ int main() {
 
     // simulation process
     for (int i = 0; i < 1000; ++i) {
-        u_ltraj = dwa_control(&st, &u, &goal, obst);
+        u_ltraj = dwa_control(&st, &u, &goal, obst, obst_num);
+
+        st = motion(&st, &u_ltraj.u);
+        trajectory.push_back(st);
+
+        // check goal
+        if (sqrt((st.x_m - goal.x_m) * (st.x_m - goal.x_m) + (st.y_m - goal.y_m) * (st.y_m - goal.y_m)) <= ROBOT_RADIUS_M)
+        {
+            cout << "Goal!!" << endl;
+            break;
+        }
+    }
+
+    // print trajectory
+    for (int i = 0; i < trajectory.size(); ++i) {
+        cout << "(" << trajectory.at(i).x_m << ", " << trajectory.at(i).y_m << ")" << endl;
     }
 
     return 0;
